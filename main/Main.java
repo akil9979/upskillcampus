@@ -28,12 +28,11 @@ public class Main {
             }
             System.out.println("Loaded " + loaded.size() + " expenses from disk.");
         } catch (Exception e) {
-            System.out.println("No saved data found or error reading file.");
+            System.out.println("Error loading expenses. Please check if the data file is accessible.");
         }
 
         while (true) {
             printMenu();
-            System.out.print("Enter your choice: ");
             String choice = scanner.nextLine();
             switch (choice) {
                 case "1":
@@ -63,16 +62,18 @@ public class Main {
         }
     }
 
-    /** Prints the application menu. */
+    /** Prints the application menu with formatted borders. */
     private static void printMenu() {
-        System.out.println("\n--- Expense Tracker Menu ---");
+        System.out.println("\n===== Expense Tracker Menu =====");
         System.out.println("1. Add Expense");
-        System.out.println("2. View All Expenses");
-        System.out.println("3. Search Expense by Category");
+        System.out.println("2. View Expenses");
+        System.out.println("3. Search by Category");
         System.out.println("4. Update Expense");
         System.out.println("5. Delete Expense");
         System.out.println("6. Display Total Expense");
         System.out.println("7. Exit");
+        System.out.println("===============================");
+        System.out.print("Enter your choice: ");
     }
 
     /** Handles adding a new expense with validation and exception handling. */
@@ -80,25 +81,8 @@ public class Main {
         try {
             System.out.print("Enter date (yyyy-mm-dd): ");
             LocalDate date = LocalDate.parse(scanner.nextLine());
-            double amount;
-            while (true) {
-                System.out.print("Enter amount: ");
-                String amountStr = scanner.nextLine();
-                try {
-                    amount = Double.parseDouble(amountStr);
-                    if (amount <= 0) throw new NumberFormatException();
-                    break;
-                } catch (NumberFormatException e) {
-                    System.out.println("Amount must be a positive number. Try again.");
-                }
-            }
-            String category;
-            while (true) {
-                System.out.print("Enter category: ");
-                category = scanner.nextLine().trim();
-                if (!category.isEmpty()) break;
-                System.out.println("Category cannot be empty. Try again.");
-            }
+            double amount = promptForAmount();
+            String category = promptForNonEmptyString("Enter category: ");
             System.out.print("Enter description: ");
             String description = scanner.nextLine();
             Expense expense = expenseService.addExpense(date, amount, category, description);
@@ -110,31 +94,91 @@ public class Main {
         }
     }
 
-    /** Shows all expenses. */
+    /**
+     * Prompts the user for a valid, positive double amount and returns it.
+     * Ensures only a numeric, >0 input is accepted.
+     */
+    private static double promptForAmount() {
+        double amount = 0.0;
+        while (true) {
+            System.out.print("Enter amount: ");
+            String input = scanner.nextLine();
+            try {
+                amount = Double.parseDouble(input);
+                if (amount <= 0) {
+                    System.out.println("Amount must be greater than zero. Please try again.");
+                } else {
+                    break;
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid number format. Please enter a valid number.");
+            }
+        }
+        return amount;
+    }
+
+    /**
+     * Prompts for a non-empty, trimmed string with the given prompt message.
+     */
+    private static String promptForNonEmptyString(String prompt) {
+        String input;
+        while (true) {
+            System.out.print(prompt);
+            input = scanner.nextLine().trim();
+            if (!input.isEmpty()) break;
+            System.out.println("This field cannot be empty. Try again.");
+        }
+        return input;
+    }
+
+    /** 
+     * Shows all expenses in a formatted table. 
+     * If no expenses exist, informs the user.
+     */
     private static void showAllExpenses() {
         List<Expense> expenses = expenseService.getAllExpenses();
         if (expenses.isEmpty()) {
-            System.out.println("No expenses to display.");
+            System.out.println("No expenses found.");
         } else {
-            System.out.println("--- All Expenses ---");
+            printExpenseTableHeader();
             for (Expense exp : expenses) {
-                System.out.println(exp);
+                printExpenseTableRow(exp);
             }
+            printExpenseTableFooter();
         }
     }
 
-    /** Handles searching expenses by category. */
+    /** Prints the table header for the expenses list. */
+    private static void printExpenseTableHeader() {
+        System.out.println("+-----+------------+--------+--------------+----------------------+" );
+        System.out.printf("| %-3s | %-10s | %-6s | %-12s | %-20s |%n", "ID", "Date", "Amount", "Category", "Description");
+        System.out.println("+-----+------------+--------+--------------+----------------------+" );
+    }
+
+    /** Prints a formatted expense table row. */
+    private static void printExpenseTableRow(Expense e) {
+        System.out.printf("| %-3d | %-10s | %6.2f | %-12s | %-20s |%n", e.getId(), e.getDate(), e.getAmount(), e.getCategory(), e.getDescription());
+    }
+
+    /** Prints the table footer. */
+    private static void printExpenseTableFooter() {
+        System.out.println("+-----+------------+--------+--------------+----------------------+" );
+    }
+
+    /**
+     * Handles searching expenses by category, displays results in a table or gives a no-results message.
+     */
     private static void searchByCategoryFlow() {
-        System.out.print("Enter category to search: ");
-        String category = scanner.nextLine().trim();
+        String category = promptForNonEmptyString("Enter category to search: ");
         List<Expense> matches = expenseService.searchByCategory(category);
         if (matches.isEmpty()) {
             System.out.println("No expenses found under category '" + category + "'.");
         } else {
-            System.out.println("Expenses in category '" + category + "':");
+            printExpenseTableHeader();
             for (Expense exp : matches) {
-                System.out.println(exp);
+                printExpenseTableRow(exp);
             }
+            printExpenseTableFooter();
         }
     }
 
